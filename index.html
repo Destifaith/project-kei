@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Score Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-section {
+            margin-bottom: 30px;
+        }
+        .student-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .student-form input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+            min-width: 150px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .delete-btn {
+            background-color: #f44336;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .chart-container {
+            margin-top: 30px;
+            height: 400px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .email-section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .email-section input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .notification {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info-box {
+            background-color: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .pdf-preview {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .size-warning {
+            color: #d32f2f;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Student Score Management System</h1>
+        
+        <div class="info-box">
+            <p><strong>Instructions:</strong> Enter student names, scores, and classes. Generate a graph and PDF, then submit the assignment to the instructor.</p>
+        </div>
+        
+        <div class="form-section">
+            <h2>Add Student Data</h2>
+            <div class="student-form">
+                <input type="text" id="studentName" placeholder="Student Name">
+                <input type="number" id="studentScore" placeholder="Score (0-100)" min="0" max="100">
+                <input type="text" id="studentClass" placeholder="Class">
+                <button id="addStudent">Add Student</button>
+            </div>
+        </div>
+        
+        <div class="student-list">
+            <h2>Student Records</h2>
+            <table id="studentTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Score</th>
+                        <th>Class</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody">
+                    <!-- Student data will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="action-buttons">
+            <button id="generateGraph">Generate Graph</button>
+            <!-- <button id="generatePDF">Generate PDF Report</button> -->
+            <button id="clearData">Clear All Data</button>
+        </div>
+        
+        <div class="chart-container">
+            <canvas id="scoreChart"></canvas>
+        </div>
+
+        <div id="pdfPreview" class="pdf-preview">
+            <h3>PDF Preview (This will be included in your submission)</h3>
+            <div id="pdfContent"></div>
+            <div id="sizeWarning" class="size-warning"></div>
+        </div>
+        
+        <div class="email-section">
+            <h2>Submit Assignment</h2>
+            <p>Enter your full name to submit this assignment to the instructor:</p>
+            <input type="text" id="userName" placeholder="Your Full Name">
+            <div class="action-buttons">
+                <!-- <button id="submitAssignment">Submit Assignment with PDF</button> -->
+                <button id="submitWithoutPDF">Submit Without PDF (Text Only)</button>
+            </div>
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p id="loadingText">Generating PDF and sending to instructor...</p>
+            </div>
+            <div id="notification" class="notification"></div>
+        </div>
+    </div>
+
+    <script>
+        // === REPLACE THESE WITH YOUR ACTUAL CREDENTIALS ===
+        const EMAILJS_PUBLIC_KEY = "Vfh7Qyet2ba_uXWvq";
+        const EMAILJS_SERVICE_ID = "service_ngixc9c";
+        const EMAILJS_TEMPLATE_ID = "template_jf9wlo6";
+        
+        // Initialize EmailJS
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+        
+        // Store student data
+        let students = [];
+        
+        // DOM elements
+        const studentNameInput = document.getElementById('studentName');
+        const studentScoreInput = document.getElementById('studentScore');
+        const studentClassInput = document.getElementById('studentClass');
+        const addStudentBtn = document.getElementById('addStudent');
+        const studentTableBody = document.getElementById('studentTableBody');
+        const generateGraphBtn = document.getElementById('generateGraph');
+        const generatePDFBtn = document.getElementById('generatePDF');
+        const clearDataBtn = document.getElementById('clearData');
+        const userNameInput = document.getElementById('userName');
+        const submitAssignmentBtn = document.getElementById('submitAssignment');
+        const submitWithoutPDFBtn = document.getElementById('submitWithoutPDF');
+        const notification = document.getElementById('notification');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const loadingText = document.getElementById('loadingText');
+        const pdfPreview = document.getElementById('pdfPreview');
+        const pdfContent = document.getElementById('pdfContent');
+        const sizeWarning = document.getElementById('sizeWarning');
+        
+        // Chart variable
+        let scoreChart = null;
+        let pdfBlob = null;
+        
+        // Add student function
+        addStudentBtn.addEventListener('click', function() {
+            const name = studentNameInput.value.trim();
+            const score = parseInt(studentScoreInput.value);
+            const className = studentClassInput.value.trim();
+            
+            if (name && !isNaN(score) && score >= 0 && score <= 100 && className) {
+                students.push({ name, score, class: className });
+                updateStudentTable();
+                clearInputs();
+            } else {
+                alert('Please fill all fields correctly. Score must be between 0 and 100.');
+            }
+        });
+        
+        // Update student table
+        function updateStudentTable() {
+            studentTableBody.innerHTML = '';
+            
+            students.forEach((student, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${student.name}</td>
+                    <td>${student.score}</td>
+                    <td>${student.class}</td>
+                    <td><button class="delete-btn" data-index="${index}">Delete</button></td>
+                `;
+                studentTableBody.appendChild(row);
+            });
+            
+            // Add event listeners to delete buttons
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    students.splice(index, 1);
+                    updateStudentTable();
+                });
+            });
+        }
+        
+        // Clear input fields
+        function clearInputs() {
+            studentNameInput.value = '';
+            studentScoreInput.value = '';
+            studentClassInput.value = '';
+            studentNameInput.focus();
+        }
+        
+        // Generate graph
+        generateGraphBtn.addEventListener('click', function() {
+            if (students.length === 0) {
+                alert('No student data available to generate graph.');
+                return;
+            }
+            
+            // Destroy previous chart if exists
+            if (scoreChart) {
+                scoreChart.destroy();
+            }
+            
+            // Prepare data for chart
+            const studentNames = students.map(student => student.name);
+            const studentScores = students.map(student => student.score);
+            
+            // Create chart
+            const ctx = document.getElementById('scoreChart').getContext('2d');
+            scoreChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: studentNames,
+                    datasets: [{
+                        label: 'Student Scores',
+                        data: studentScores,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Score',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Student Name',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Student Score Distribution',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            });
+        });
+        
+        // Generate PDF
+        generatePDFBtn.addEventListener('click', function() {
+            if (students.length === 0) {
+                alert('No student data available to generate PDF.');
+                return;
+            }
+            
+            generatePDF();
+        });
+        
+        // Generate PDF function (optimized for smaller size)
+        async function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Add title
+            doc.setFontSize(16);
+            doc.setTextColor(40);
+            doc.text('Student Score Report', 105, 15, { align: 'center' });
+            
+            // Add date
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 22, { align: 'center' });
+            
+            // Add student table
+            let yPosition = 35;
+            
+            // Table headers
+            doc.setFillColor(74, 175, 80);
+            doc.setTextColor(255);
+            doc.rect(10, yPosition, 190, 8, 'F');
+            doc.setFontSize(9);
+            doc.text('Student Name', 15, yPosition + 5);
+            doc.text('Score', 120, yPosition + 5);
+            doc.text('Class', 160, yPosition + 5);
+            
+            yPosition += 8;
+            
+            // Table rows
+            doc.setTextColor(0);
+            students.forEach((student) => {
+                if (yPosition > 270) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                
+                doc.text(student.name.substring(0, 25), 15, yPosition + 5);
+                doc.text(student.score.toString(), 120, yPosition + 5);
+                doc.text(student.class.substring(0, 15), 160, yPosition + 5);
+                
+                yPosition += 8;
+            });
+            
+            // Add summary statistics
+            yPosition += 15;
+            if (yPosition > 250) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            
+            doc.setFontSize(12);
+            doc.setTextColor(40);
+            doc.text('Summary Statistics', 15, yPosition);
+            
+            yPosition += 8;
+            doc.setFontSize(9);
+            
+            const scores = students.map(student => student.score);
+            const averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+            const maxScore = Math.max(...scores);
+            const minScore = Math.min(...scores);
+            
+            doc.text(`Total Students: ${students.length}`, 15, yPosition);
+            doc.text(`Average Score: ${averageScore.toFixed(2)}`, 15, yPosition + 6);
+            doc.text(`Highest Score: ${maxScore}`, 15, yPosition + 12);
+            doc.text(`Lowest Score: ${minScore}`, 15, yPosition + 18);
+            
+            // Add chart if available (with size optimization)
+            if (scoreChart) {
+                yPosition += 30;
+                if (yPosition > 150) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                
+                try {
+                    const chartCanvas = document.getElementById('scoreChart');
+                    
+                    // Reduce quality to decrease file size
+                    const chartImage = await html2canvas(chartCanvas, {
+                        scale: 0.8, // Reduce resolution
+                        useCORS: true,
+                        logging: false
+                    });
+                    
+                    // Use JPEG with lower quality for smaller file size
+                    const imgData = chartImage.toDataURL('image/jpeg', 0.7);
+                    
+                    // Add chart title
+                    doc.setFontSize(10);
+                    doc.text('Score Distribution Chart', 105, yPosition, { align: 'center' });
+                    yPosition += 5;
+                    
+                    // Add the chart image (smaller size)
+                    doc.addImage(imgData, 'JPEG', 40, yPosition, 130, 60);
+                } catch (error) {
+                    console.log('Could not add chart to PDF:', error);
+                }
+            }
+            
+            // Save PDF as blob and check size
+            pdfBlob = doc.output('blob');
+            const pdfSize = pdfBlob.size;
+            const pdfSizeKB = (pdfSize / 1024).toFixed(2);
+            
+            // Show preview with size info
+            showPDFPreview(pdfSizeKB);
+            
+            if (pdfSize > 45000) { // 45KB warning
+                showNotification(`PDF generated (${pdfSizeKB}KB) - Close to size limit. Consider submitting without PDF.`, 'error');
+            } else {
+                showNotification(`PDF generated successfully! (${pdfSizeKB}KB) You can now submit the assignment.`, 'success');
+            }
+        }
+        
+        // Show PDF preview
+        function showPDFPreview(pdfSizeKB) {
+            pdfContent.innerHTML = `
+                <h4>Student Data Table:</h4>
+                <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                    <tr style="background-color: #4CAF50; color: white;">
+                        <th style="padding: 8px; text-align: left;">Name</th>
+                        <th style="padding: 8px; text-align: left;">Score</th>
+                        <th style="padding: 8px; text-align: left;">Class</th>
+                    </tr>
+                    ${students.map(student => `
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 8px;">${student.name}</td>
+                            <td style="padding: 8px;">${student.score}</td>
+                            <td style="padding: 8px;">${student.class}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+                
+                <h4>Summary Statistics:</h4>
+                ${(() => {
+                    const scores = students.map(student => student.score);
+                    const averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+                    const maxScore = Math.max(...scores);
+                    const minScore = Math.min(...scores);
+                    return `
+                        <ul>
+                            <li><strong>Total Students:</strong> ${students.length}</li>
+                            <li><strong>Average Score:</strong> ${averageScore.toFixed(2)}</li>
+                            <li><strong>Highest Score:</strong> ${maxScore}</li>
+                            <li><strong>Lowest Score:</strong> ${minScore}</li>
+                        </ul>
+                    `;
+                })()}
+                
+                ${scoreChart ? '<p><strong>Chart included in PDF</strong></p>' : '<p style="color: red;">Generate graph first to include chart in PDF</p>'}
+            `;
+            
+            sizeWarning.innerHTML = `PDF Size: ${pdfSizeKB}KB (Limit: ~50KB)`;
+            if (pdfSizeKB > 45) {
+                sizeWarning.style.color = '#d32f2f';
+                sizeWarning.innerHTML += ' - WARNING: Close to size limit!';
+            } else {
+                sizeWarning.style.color = '#388e3c';
+            }
+            
+            pdfPreview.style.display = 'block';
+        }
+        
+        // Clear all data
+        clearDataBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all student data?')) {
+                students = [];
+                updateStudentTable();
+                if (scoreChart) {
+                    scoreChart.destroy();
+                    scoreChart = null;
+                }
+                pdfPreview.style.display = 'none';
+                pdfBlob = null;
+            }
+        });
+        
+        // Submit assignment with PDF
+        submitAssignmentBtn.addEventListener('click', async function() {
+            const userName = userNameInput.value.trim();
+            
+            if (!userName) {
+                showNotification('Please enter your full name.', 'error');
+                return;
+            }
+            
+            if (students.length === 0) {
+                showNotification('No student data to submit.', 'error');
+                return;
+            }
+            
+            // Generate PDF if not already generated
+            if (!pdfBlob) {
+                showNotification('Generating PDF first...', 'success');
+                await generatePDF();
+            }
+            
+            // Check PDF size
+            if (pdfBlob.size > 50000) {
+                showNotification('PDF is too large (>50KB). Please use "Submit Without PDF" or reduce data.', 'error');
+                return;
+            }
+            
+            // Show loading indicator
+            loadingIndicator.style.display = 'block';
+            loadingText.textContent = 'Sending PDF to instructor...';
+            submitAssignmentBtn.disabled = true;
+            submitWithoutPDFBtn.disabled = true;
+            
+            // Send email with PDF attachment
+            sendEmailWithPDF(userName);
+        });
+        
+        // Submit without PDF (text only)
+        submitWithoutPDFBtn.addEventListener('click', function() {
+            const userName = userNameInput.value.trim();
+            
+            if (!userName) {
+                showNotification('Please enter your full name.', 'error');
+                return;
+            }
+            
+            if (students.length === 0) {
+                showNotification('No student data to submit.', 'error');
+                return;
+            }
+            
+            // Show loading indicator
+            loadingIndicator.style.display = 'block';
+            loadingText.textContent = 'Sending data to instructor...';
+            submitAssignmentBtn.disabled = true;
+            submitWithoutPDFBtn.disabled = true;
+            
+            // Send email without PDF
+            sendEmailWithoutPDF(userName);
+        });
+        
+        // Send email with PDF attachment
+        function sendEmailWithPDF(userName) {
+            const reader = new FileReader();
+            reader.readAsDataURL(pdfBlob);
+            reader.onloadend = function() {
+                const pdfBase64 = reader.result.split(',')[1];
+                
+                const templateParams = {
+                    to_email: "destinyfelix823@gmail.com",
+                    from_name: userName,
+                    subject: `Student Score Assignment PDF from ${userName}`,
+                    message: `Please find attached the student score report PDF generated by ${userName}.`,
+                    pdf_attachment: pdfBase64
+                };
+                
+                emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
+                    .then(function(response) {
+                        console.log('SUCCESS!', response.status, response.text);
+                        showNotification('Assignment submitted successfully! PDF has been sent to the instructor.', 'success');
+                        resetForm();
+                    }, function(error) {
+                        console.log('FAILED...', error);
+                        if (error.text.includes('size') || error.text.includes('attachment')) {
+                            showNotification('PDF too large for email. Please use "Submit Without PDF" option.', 'error');
+                        } else {
+                            showNotification('Failed to submit assignment. Please try again.', 'error');
+                        }
+                        resetForm();
+                    });
+            };
+        }
+        
+        // Send email without PDF (text only)
+        function sendEmailWithoutPDF(userName) {
+            // Create text version of the data
+            let textContent = `STUDENT SCORE ASSIGNMENT\n`;
+            textContent += `Submitted by: ${userName}\n\n`;
+            textContent += `STUDENT DATA:\n`;
+            textContent += `Name\tScore\tClass\n`;
+            textContent += `${'-'.repeat(40)}\n`;
+            
+            students.forEach(student => {
+                textContent += `${student.name}\t${student.score}\t${student.class}\n`;
+            });
+            
+            const scores = students.map(student => student.score);
+            const averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+            const maxScore = Math.max(...scores);
+            const minScore = Math.min(...scores);
+            
+            textContent += `\nSUMMARY STATISTICS:\n`;
+            textContent += `Total Students: ${students.length}\n`;
+            textContent += `Average Score: ${averageScore.toFixed(2)}\n`;
+            textContent += `Highest Score: ${maxScore}\n`;
+            textContent += `Lowest Score: ${minScore}\n`;
+            
+            const templateParams = {
+                to_email: "destinyfelix823@gmail.com",
+                from_name: userName,
+                subject: `Student Score Assignment from ${userName}`,
+                message: textContent
+            };
+            
+            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
+                .then(function(response) {
+                    console.log('SUCCESS!', response.status, response.text);
+                    showNotification('Assignment submitted successfully! Data has been sent to the instructor.', 'success');
+                    resetForm();
+                }, function(error) {
+                    console.log('FAILED...', error);
+                    showNotification('Failed to submit assignment. Please try again.', 'error');
+                    resetForm();
+                });
+        }
+        
+        // Reset form after submission
+        function resetForm() {
+            userNameInput.value = '';
+            loadingIndicator.style.display = 'none';
+            submitAssignmentBtn.disabled = false;
+            submitWithoutPDFBtn.disabled = false;
+        }
+        
+        // Show notification
+        function showNotification(message, type) {
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Allow pressing Enter to add student
+        [studentNameInput, studentScoreInput, studentClassInput].forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addStudentBtn.click();
+                }
+            });
+        });
+        
+        // Allow pressing Enter to submit assignment
+        userNameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitAssignmentBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
